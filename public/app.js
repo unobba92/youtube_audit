@@ -6,6 +6,8 @@ const emptyState = $("#empty-state");
 const loadingState = $("#loading-state");
 const results = $("#results");
 let latestResult = null;
+const YOUTUBE_CACHE_TTL_MS = 6 * 60 * 60 * 1000;
+const YOUTUBE_CACHE_PREFIX = "youtube-audit:research:v1:";
 
 const loadingMessages = [
   "시청자 약속을 찾고 있어요…",
@@ -75,6 +77,13 @@ $("#youtube-search-form").addEventListener("submit", async event => {
   button.disabled = true;
   button.textContent = "검색 중…";
   try {
+    const cached = readYouTubeCache(query, "KR");
+    if (cached) {
+      if (latestResult) latestResult.research = cached;
+      renderResearch(cached);
+      showToast(`‘${cached.query}’ 캐시 결과를 재사용했습니다.`);
+      return;
+    }
     const response = await fetch("/api/youtube-search", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -182,13 +191,40 @@ function renderResearch(research) {
   if (!research) return card.classList.add("hidden");
   card.classList.remove("hidden");
   $("#research-query").value = research.query || "";
+  writeYouTubeCache(research, "KR");
   const compact = new Intl.NumberFormat("ko-KR", { notation: "compact", maximumFractionDigits: 1 });
+  const cacheLabel = research.cache?.hit ? "캐시 · 재사용" : "데이터 · 새 조회";
   $("#research-content").innerHTML = `<div class="research-stats">
-    <span>검색어 · ${escapeHtml(research.query)}</span><span>선정 · 관련도 상위 10개 중 조회수 상위 5개</span><span>경쟁 ${research.competitionScore}/100</span><span>중앙 조회수 ${compact.format(research.medianViews || 0)}</span><span>최근 1년 ${research.recentTop10}개</span>
+    <span class="cache-state ${research.cache?.hit ? "cached" : "fresh"}">${cacheLabel}</span><span>검색어 · ${escapeHtml(research.query)}</span><span>선정 · 관련도 상위 10개 중 조회수 상위 5개</span><span>경쟁 ${research.competitionScore}/100</span><span>중앙 조회수 ${compact.format(research.medianViews || 0)}</span><span>최근 1년 ${research.recentTop10}개</span>
   </div>${research.topVideos.map(v => {
     const url = /^https:\/\/www\.youtube\.com\/watch\?v=[A-Za-z0-9_-]+$/.test(v.url || "") ? v.url : `https://www.youtube.com/watch?v=${encodeURIComponent(v.videoId || "")}`;
     return `<a class="video-row" href="${escapeAttr(url)}" target="_blank" rel="noopener noreferrer" aria-label="${escapeAttr(v.title)} 영상 열기"><div><b>${escapeHtml(v.title)}</b><br><small>${escapeHtml(v.channel)}</small></div><span class="video-meta"><strong>${compact.format(v.views)}회</strong><i aria-hidden="true">↗</i></span></a>`;
   }).join("")}`;
+}
+
+function youtubeCacheKey(query, region) {
+  const normalized = String(query || "").normalize("NFKC").toLowerCase().replace(/\s+/g, " ").trim();
+  return `${YOUTUBE_CACHE_PREFIX}${region}:${normalized}`;
+}
+
+function readYouTubeCache(query, region) {
+  try {
+    const raw = localStorage.getItem(youtubeCacheKey(query, region));
+    if (!raw) return null;
+    const entry = JSON.parse(raw);
+    if (!entry.savedAt || Date.now() - entry.savedAt > YOUTUBE_CACHE_TTL_MS) {
+      localStorage.removeItem(youtubeCacheKey(query, region));
+      return null;
+    }
+    return { ...entry.data, cache: { hit: true, source: "browser", expiresAt: entry.savedAt + YOUTUBE_CACHE_TTL_MS } };
+  } catch { return null; }
+}
+
+function writeYouTubeCache(research, region) {
+  if (!research?.query) return;
+  try {
+    localStorage.setItem(youtubeCacheKey(research.query, region), JSON.stringify({ savedAt: Date.now(), data: research }));
+  } catch {}
 }
 
 function metric(value, kind) {

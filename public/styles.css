@@ -144,6 +144,8 @@ select option:disabled { color: #aaa; }
 .tag { padding: 6px 9px; border-radius: 6px; background: #f0ebe1; color: var(--ink-soft); font-size: 10px; }
 .research-stats { display: flex; gap: 9px; flex-wrap: wrap; margin-bottom: 13px; }
 .research-stats span { border: 1px solid var(--line); border-radius: 7px; padding: 7px 9px; font-size: 10px; }
+.research-stats .cache-state.cached { border-color: #b8dfd4; background: #e5f5f0; color: #23826c; }
+.research-stats .cache-state.fresh { border-color: #f0d9a3; background: #fff5d9; color: #8a650f; }
 .quick-search { margin: -2px 0 20px; padding: 15px; border: 1px solid #e5ded1; border-radius: 11px; background: #f8f4ec; }
 .quick-search label { margin-bottom: 8px; color: var(--ink); font-size: 11px; }
 .quick-search-row { display: grid; grid-template-columns: 1fr auto; gap: 8px; }

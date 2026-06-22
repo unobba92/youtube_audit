@@ -11,6 +11,9 @@ await loadEnv(join(ROOT, ".env"));
 const PORT = Number(process.env.PORT || 4173);
 const OPENAI_MODEL = process.env.OPENAI_MODEL || "gpt-5.5";
 const GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-3.5-flash";
+const YOUTUBE_CACHE_TTL_MS = 6 * 60 * 60 * 1000;
+const YOUTUBE_CACHE_MAX = 100;
+const youtubeResearchCache = new Map();
 
 const MIME = {
   ".html": "text/html; charset=utf-8",
@@ -380,6 +383,13 @@ async function inferSearchQuery(context, provider) {
 
 async function researchYouTube(context, topic) {
   topic = clean(topic, 100) || inferTopicHeuristic(context.brief);
+  const cacheKey = `${context.region || "KR"}:${topic.normalize("NFKC").toLowerCase().replace(/\s+/g, " ").trim()}`;
+  const cached = youtubeResearchCache.get(cacheKey);
+  if (cached && cached.expiresAt > Date.now()) {
+    return { ...cached.value, cache: { hit: true, source: "server", expiresAt: cached.expiresAt } };
+  }
+  if (cached) youtubeResearchCache.delete(cacheKey);
+
   const key = process.env.YOUTUBE_API_KEY;
   const searchUrl = new URL("https://www.googleapis.com/youtube/v3/search");
   searchUrl.search = new URLSearchParams({
@@ -391,7 +401,11 @@ async function researchYouTube(context, topic) {
   if (!searchRes.ok) throw new Error(searchData?.error?.message || "YouTube 검색 실패");
 
   const ids = searchData.items.map(item => item.id.videoId).filter(Boolean);
-  if (!ids.length) return { query: topic, totalResults: 0, competitionScore: 15, topVideos: [] };
+  if (!ids.length) {
+    const emptyResult = { query: topic, totalResults: 0, competitionScore: 15, topVideos: [], cache: { hit: false, source: "youtube", expiresAt: Date.now() + YOUTUBE_CACHE_TTL_MS } };
+    setYouTubeCache(cacheKey, emptyResult);
+    return emptyResult;
+  }
 
   const videosUrl = new URL("https://www.googleapis.com/youtube/v3/videos");
   videosUrl.search = new URLSearchParams({ part: "snippet,statistics", id: ids.join(","), key });
@@ -416,14 +430,25 @@ async function researchYouTube(context, topic) {
   const viewWeight = Math.min(45, Math.log10(Math.max(1, medianViews)) * 8);
   const freshWeight = recentCount * 2;
 
-  return {
+  const result = {
     query: topic,
     totalResults: searchData.pageInfo?.totalResults || 0,
     medianViews,
     recentTop10: recentCount,
     competitionScore: Math.round(Math.min(100, resultWeight + viewWeight + freshWeight)),
     topVideos: topVideos.slice(0, 5),
+    cache: { hit: false, source: "youtube", expiresAt: Date.now() + YOUTUBE_CACHE_TTL_MS },
   };
+  setYouTubeCache(cacheKey, result);
+  return result;
+}
+
+function setYouTubeCache(key, value) {
+  if (youtubeResearchCache.size >= YOUTUBE_CACHE_MAX) {
+    const oldestKey = youtubeResearchCache.keys().next().value;
+    if (oldestKey) youtubeResearchCache.delete(oldestKey);
+  }
+  youtubeResearchCache.set(key, { value, expiresAt: Date.now() + YOUTUBE_CACHE_TTL_MS });
 }
 
 function demoAnalysis(context, research) {
