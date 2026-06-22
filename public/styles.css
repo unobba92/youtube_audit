@@ -138,6 +138,7 @@ select option:disabled { color: #aaa; }
 .check-item p { margin: 0; color: var(--ink-soft); line-height: 1.5; }
 .copy-all { border: 1px solid var(--line); border-radius: 7px; background: white; padding: 7px 10px; font-size: 10px; color: var(--ink); }
 .description-opening { font-weight: 700; }
+.description-opening, #description-body { white-space: pre-line; }
 .copy-section > p { font-size: 12px; line-height: 1.7; }
 .tag-list { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 16px; }
 .tag { padding: 6px 9px; border-radius: 6px; background: #f0ebe1; color: var(--ink-soft); font-size: 10px; }

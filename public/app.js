@@ -60,7 +60,7 @@ $("#copy-all").addEventListener("click", async () => {
   const text = [
     "[추천 제목]", ...r.titles.map((x, i) => `${i + 1}. ${x.text}`), "",
     "[썸네일]", `${r.thumbnail.headline} / ${r.thumbnail.subcopy}`, r.thumbnail.visual, "",
-    "[설명문]", r.description.opening, r.description.body, r.description.hashtags.join(" "), "",
+    "[설명문]", normalizeLineBreaks(r.description.opening), normalizeLineBreaks(r.description.body), r.description.hashtags.join(" "), "",
     "[태그]", r.tags.join(", "),
   ].join("\n");
   await navigator.clipboard.writeText(text);
@@ -194,7 +194,8 @@ function renderResearch(research) {
 function metric(value, kind) {
   return `<div class="metric ${kind}"><div class="bar"><i style="width:${Number(value)}%"></i></div><b>${Number(value)}</b></div>`;
 }
-function text(selector, value) { $(selector).textContent = value || ""; }
+function text(selector, value) { $(selector).textContent = normalizeLineBreaks(value); }
+function normalizeLineBreaks(value) { return String(value ?? "").replace(/\\n/g, "\n"); }
 function escapeHtml(value) { return String(value ?? "").replace(/[&<>'"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" })[c]); }
 function escapeAttr(value) { return escapeHtml(value).replace(/`/g, "&#96;"); }
 function showToast(message) {
