@@ -37,7 +37,6 @@ h1 { font-size: 36px; line-height: 1.18; letter-spacing: -.05em; margin: 12px 0 
 h1 em { color: var(--red); font-style: normal; font-family: "Gowun Batang", serif; }
 .intro { color: var(--ink-soft); font-size: 14px; line-height: 1.65; margin: 0 0 30px; }
 form label { display: block; font-size: 12px; font-weight: 700; margin: 0 0 8px; }
-.author-field { margin-bottom: 16px; }
 form label b { color: var(--red); }
 textarea, input, select { width: 100%; border: 1px solid var(--line); border-radius: 10px; background: white; color: var(--ink); outline: none; transition: .2s; }
 textarea:focus, input:focus, select:focus { border-color: var(--red); box-shadow: 0 0 0 3px rgba(239, 62, 50, .09); }
@@ -85,7 +84,7 @@ select option:disabled { color: #aaa; }
 .work-record-head span { color: var(--red); font-size: 9px; font-weight: 800; letter-spacing: .1em; }
 .work-record-head h3 { margin: 0; font-size: 15px; }
 .work-record-head time { color: var(--ink-soft); font-size: 10px; }
-.record-meta { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin-top: 16px; }
+.record-meta { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 16px; }
 .record-meta > div { padding: 10px; border-radius: 8px; background: #f4efe6; }
 .record-meta small { display: block; margin-bottom: 5px; color: var(--ink-soft); font-size: 8px; }
 .record-meta b { display: block; overflow: hidden; font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }

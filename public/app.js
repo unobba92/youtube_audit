@@ -70,7 +70,7 @@ $("#copy-all").addEventListener("click", async () => {
 });
 
 $("#print-report").addEventListener("click", () => {
-  document.title = `${latestResult?.meta?.request?.author || "담당자"}_유튜브_기획검수_보고서`;
+  document.title = "유튜브_기획검수_보고서";
   window.print();
   setTimeout(() => { document.title = "유튜브 기획 검수실"; }, 500);
 });
@@ -198,7 +198,6 @@ function renderWorkRecord(meta) {
   const created = new Date(meta.generatedAt);
   $("#record-time").textContent = Number.isNaN(created.getTime()) ? "" : created.toLocaleString("ko-KR");
   $("#record-meta").innerHTML = [
-    ["담당자", request.author || "미입력"],
     ["영상", `${request.format || "-"} · ${request.duration || "-"}`],
     ["대상", request.audience || "미지정"],
     ["검색 주제", request.topic || "자동 판단"],
