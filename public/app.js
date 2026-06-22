@@ -69,6 +69,12 @@ $("#copy-all").addEventListener("click", async () => {
   showToast("업로드 패키지를 복사했습니다.");
 });
 
+$("#print-report").addEventListener("click", () => {
+  document.title = `${latestResult?.meta?.request?.author || "담당자"}_유튜브_기획검수_보고서`;
+  window.print();
+  setTimeout(() => { document.title = "유튜브 기획 검수실"; }, 500);
+});
+
 $("#youtube-search-form").addEventListener("submit", async event => {
   event.preventDefault();
   const query = $("#research-query").value.trim();
@@ -146,6 +152,7 @@ function render(data) {
   results.classList.remove("hidden");
   emptyState.classList.add("hidden");
   $("#mode-badge").textContent = `${data.meta.mode} · ${data.meta.sources.join(" + ")}`;
+  renderWorkRecord(data.meta);
   $("#total-score").textContent = data.summary.score;
   $("#score-ring").style.setProperty("--score", data.summary.score);
   text("#verdict", data.summary.verdict);
@@ -184,6 +191,24 @@ function render(data) {
   renderResearch(data.research);
   results.scrollIntoView({ behavior: "smooth", block: "start" });
   if (data.meta.warnings?.length) showToast(data.meta.warnings[0]);
+}
+
+function renderWorkRecord(meta) {
+  const request = meta.request || {};
+  const created = new Date(meta.generatedAt);
+  $("#record-time").textContent = Number.isNaN(created.getTime()) ? "" : created.toLocaleString("ko-KR");
+  $("#record-meta").innerHTML = [
+    ["담당자", request.author || "미입력"],
+    ["영상", `${request.format || "-"} · ${request.duration || "-"}`],
+    ["대상", request.audience || "미지정"],
+    ["검색 주제", request.topic || "자동 판단"],
+    ["AI 선택", providerDisplayName(request.provider)],
+  ].map(([label, value]) => `<div><small>${escapeHtml(label)}</small><b>${escapeHtml(value)}</b></div>`).join("");
+  text("#record-brief", request.brief || "기록 없음");
+}
+
+function providerDisplayName(provider) {
+  return provider === "gemini" ? "Gemini" : provider === "openai" ? "GPT" : "자동 선택";
 }
 
 function renderResearch(research) {

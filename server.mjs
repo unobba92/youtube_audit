@@ -159,6 +159,7 @@ export async function handleRequest(req, res) {
 
       const context = {
         brief,
+        author: clean(body.author, 80),
         audience: clean(body.audience, 200),
         format: clean(body.format, 60) || "정보형",
         duration: clean(body.duration, 20) === "숏폼" ? "숏폼" : "롱폼",
@@ -218,6 +219,15 @@ export async function handleRequest(req, res) {
         meta: {
           mode,
           generatedAt: new Date().toISOString(),
+          request: {
+            author: context.author || "미입력",
+            brief: context.brief,
+            audience: context.audience || "미지정",
+            format: context.format,
+            duration: context.duration,
+            topic: research?.query || context.resolvedTopic,
+            provider: requestedProvider,
+          },
           sources: [research ? "YouTube Data API" : "YouTube 예측치", aiProvider || "내장 분석기"],
           warnings: [aiError && `AI 연결 실패: ${aiError}`, youtubeError && `YouTube 연결 실패: ${youtubeError}`].filter(Boolean),
         },
