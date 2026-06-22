@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="유튜브 기획안을 데이터와 AI로 검수하는 개인용 도구" />
+  <title>유튜브 기획 검수실</title>
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="/" aria-label="처음으로">
+      <span class="brand-mark" aria-hidden="true"><span></span></span>
+      <span>유튜브 기획 검수실</span>
+      <small>BETA</small>
+    </a>
+    <div class="connections" id="connections" aria-label="데이터 연결 상태">
+      <span class="connection"><i></i> 연결 확인 중</span>
+    </div>
+  </header>
+
+  <main class="shell">
+    <aside class="brief-panel">
+      <div class="eyebrow">PLANNING AUDIT</div>
+      <h1>감이 아니라,<br><em>근거로 검수하세요.</em></h1>
+      <p class="intro">기획안을 붙여 넣으면 검색 가능성부터 제목과 썸네일까지 한 번에 정리합니다.</p>
+
+      <form id="audit-form">
+        <label for="brief">기획안 <b>*</b></label>
+        <textarea id="brief" name="brief" minlength="30" maxlength="20000" required placeholder="예: 직장인이 퇴근 후 하루 30분만 투자해 노션으로 업무 자동화 시스템을 만드는 과정을 보여준다. 초보자가 따라 할 수 있도록 실제 화면과 템플릿을 함께 제공한다."></textarea>
+        <div class="field-row three-fields">
+          <div>
+            <label for="audience">핵심 시청자</label>
+            <input id="audience" name="audience" placeholder="예: 20~30대 직장인" />
+          </div>
+          <div>
+            <label for="format">영상 형식</label>
+            <select id="format" name="format">
+              <option>정보형</option><option>브이로그</option><option>리뷰</option><option>튜토리얼</option><option>인터뷰</option>
+            </select>
+          </div>
+          <div>
+            <label for="duration">영상 길이</label>
+            <select id="duration" name="duration">
+              <option value="롱폼">롱폼</option><option value="숏폼">숏폼</option>
+            </select>
+          </div>
+        </div>
+        <div class="field-row research-fields">
+          <div>
+            <label for="topic">핵심 검색어 <span class="optional">선택</span></label>
+            <input id="topic" name="topic" placeholder="예: 지게차 옵션" />
+            <small class="field-help">비워두면 AI가 주제만 골라 검색합니다.</small>
+          </div>
+          <div>
+            <label for="provider">AI 엔진</label>
+            <select id="provider" name="provider">
+              <option value="auto">자동 선택</option>
+              <option value="gemini">Gemini</option>
+              <option value="openai">GPT</option>
+            </select>
+            <small class="field-help" id="provider-help">연결 상태 확인 중…</small>
+          </div>
+        </div>
+        <input type="hidden" name="region" value="KR" />
+        <button class="primary-button" type="submit">
+          <span class="button-label">기획안 검수하기</span>
+          <span class="button-arrow">↗</span>
+        </button>
+        <button class="sample-button" type="button" id="sample-button">샘플 기획안으로 먼저 보기</button>
+        <p class="privacy">API 키와 기획안은 브라우저에 저장하지 않습니다.</p>
+      </form>
+    </aside>
+
+    <section class="workspace" id="workspace">
+      <div class="empty-state" id="empty-state">
+        <div class="radar" aria-hidden="true"><span></span><span></span><span></span><i></i></div>
+        <p>기획안을 기다리고 있어요</p>
+        <small>왼쪽에 내용을 입력하면 이곳에 분석 결과가 펼쳐집니다.</small>
+      </div>
+
+      <div class="loading-state hidden" id="loading-state" aria-live="polite">
+        <div class="scan-card"><div class="scan-line"></div></div>
+        <h2>기획안을 뜯어보는 중입니다</h2>
+        <p id="loading-copy">시청자 약속을 찾고 있어요…</p>
+      </div>
+
+      <div class="results hidden" id="results" aria-live="polite">
+        <div class="result-head">
+          <div><div class="eyebrow">AUDIT COMPLETE</div><h2>이 기획, 이렇게 만들면 됩니다.</h2></div>
+          <div class="mode-badge" id="mode-badge"></div>
+        </div>
+
+        <section class="score-grid">
+          <article class="score-card card">
+            <div class="score-ring" id="score-ring"><strong id="total-score">0</strong><span>/100</span></div>
+            <div><small>콘텐츠 잠재력</small><h3 id="verdict"></h3><p id="risk"></p></div>
+          </article>
+          <article class="promise-card card"><small>한 줄 핵심 약속</small><blockquote id="hook"></blockquote><p id="audience-result"></p></article>
+        </section>
+
+        <section class="card section-card">
+          <div class="section-title"><div><span>01</span><h3>키워드 기회 지도</h3></div><small>수요·경쟁 점수는 상대 지표입니다</small></div>
+          <div class="keyword-table" id="keyword-table"></div>
+        </section>
+
+        <section class="two-column">
+          <article class="card section-card">
+            <div class="section-title"><div><span>02</span><h3>제목 후보</h3></div></div>
+            <div class="title-list" id="title-list"></div>
+          </article>
+          <article class="card thumbnail-card">
+            <div class="section-title"><div><span>03</span><h3>썸네일 방향</h3></div></div>
+            <div class="thumbnail-preview">
+              <span class="mock-badge">레이아웃 예시 · 생성 이미지 아님</span>
+              <div class="thumb-glow"></div><b id="thumb-headline"></b><em id="thumb-subcopy"></em><div class="thumb-face">!</div>
+            </div>
+            <dl class="thumb-notes"><div><dt>비주얼</dt><dd id="thumb-visual"></dd></div><div><dt>컬러</dt><dd id="thumb-palette"></dd></div><div><dt>피할 것</dt><dd id="thumb-avoid"></dd></div></dl>
+          </article>
+        </section>
+
+        <section class="two-column lower-grid">
+          <article class="card section-card">
+            <div class="section-title"><div><span>04</span><h3>영상 구성</h3></div></div>
+            <div class="hook-box"><small>첫 15초</small><p id="plan-hook"></p></div>
+            <ol class="chapter-list" id="chapter-list"></ol>
+            <div class="cta" id="plan-cta"></div>
+          </article>
+          <article class="card section-card">
+            <div class="section-title"><div><span>05</span><h3>검수 체크</h3></div></div>
+            <div class="check-list" id="check-list"></div>
+          </article>
+        </section>
+
+        <section class="card section-card copy-section">
+          <div class="section-title"><div><span>06</span><h3>설명문과 태그</h3></div><button class="copy-all" id="copy-all" type="button">전체 복사</button></div>
+          <p class="description-opening" id="description-opening"></p>
+          <p id="description-body"></p>
+          <div class="tag-list" id="tag-list"></div>
+        </section>
+
+        <section class="card research-card hidden" id="research-card">
+          <div class="section-title"><div><span>DATA</span><h3>YouTube 상위 결과</h3></div></div>
+          <form class="quick-search" id="youtube-search-form">
+            <label for="research-query">검색어만 바꿔 다시 확인</label>
+            <div class="quick-search-row">
+              <input id="research-query" name="query" minlength="2" maxlength="100" required placeholder="예: 지게차 옵션 비교" />
+              <button id="research-search-button" type="submit">상위 결과 검색</button>
+            </div>
+            <small>전체 AI 분석은 유지하고 YouTube 경쟁 데이터만 새로 조회합니다.</small>
+          </form>
+          <div id="research-content"></div>
+        </section>
+      </div>
+    </section>
+  </main>
+  <footer class="site-footer">
+    <strong>제작자 신언호</strong>
+    <span>본 도구와 산출물은 내부 검토용입니다. 외부 유출 및 레퍼런스의 무단 사용을 금지합니다.</span>
+  </footer>
+  <div class="toast" id="toast" role="status"></div>
+  <script type="module" src="/app.js"></script>
+</body>
+</html>
