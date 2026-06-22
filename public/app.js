@@ -162,14 +162,14 @@ function render(data) {
 
   $("#keyword-table").innerHTML = `
     <div class="keyword-row header"><span>키워드</span><span>수요</span><span>경쟁</span><span>기회</span><span>추세</span></div>
-    ${data.keywords.map(k => `<div class="keyword-row" title="${escapeAttr(k.rationale)}">
-      <strong>${escapeHtml(k.keyword)}</strong>
+    ${data.keywords.map(k => `<div class="keyword-row">
+      <span class="keyword-name"><strong>${escapeHtml(k.keyword)}</strong><small>${escapeHtml(k.rationale)}</small></span>
       ${metric(k.demand, "demand")}${metric(k.competition, "competition")}${metric(k.opportunity, "opportunity")}
       <span class="trend">${escapeHtml(k.trend)}</span>
     </div>`).join("")}`;
 
   $("#title-list").innerHTML = data.titles.map((title, index) => `<div class="title-item">
-    <span class="title-index">0${index + 1}</span><div><p>${escapeHtml(title.text)}</p><small>${escapeHtml(title.angle)}</small></div><span class="title-score">${title.score}</span>
+    <span class="title-index">0${index + 1}</span><div><p>${escapeHtml(title.text)}</p><small><b>${escapeHtml(title.angle)}</b> · ${escapeHtml(title.reason || "키워드 적합도와 클릭 호기심을 평가한 상대점수")}</small></div><span class="title-score" title="100점 만점의 AI 상대평가 점수">${title.score}<i>점</i></span>
   </div>`).join("");
 
   text("#thumb-headline", data.thumbnail.headline);
@@ -216,6 +216,7 @@ function renderResearch(research) {
   card.classList.remove("hidden");
   $("#research-query").value = research.query || "";
   writeYouTubeCache(research, "KR");
+  renderThumbnailReferences(research.topVideos || []);
   const compact = new Intl.NumberFormat("ko-KR", { notation: "compact", maximumFractionDigits: 1 });
   const cacheLabel = research.cache?.hit ? "캐시 · 재사용" : "데이터 · 새 조회";
   $("#research-content").innerHTML = `<div class="research-stats">
@@ -224,6 +225,17 @@ function renderResearch(research) {
     const url = /^https:\/\/www\.youtube\.com\/watch\?v=[A-Za-z0-9_-]+$/.test(v.url || "") ? v.url : `https://www.youtube.com/watch?v=${encodeURIComponent(v.videoId || "")}`;
     return `<a class="video-row" href="${escapeAttr(url)}" target="_blank" rel="noopener noreferrer" aria-label="${escapeAttr(v.title)} 영상 열기"><div><b>${escapeHtml(v.title)}</b><br><small>${escapeHtml(v.channel)}</small></div><span class="video-meta"><strong>${compact.format(v.views)}회</strong><i aria-hidden="true">↗</i></span></a>`;
   }).join("")}`;
+}
+
+function renderThumbnailReferences(videos) {
+  const section = $("#thumbnail-references");
+  const usable = videos.filter(video => video.thumbnail && video.url).slice(0, 4);
+  if (!usable.length) return section.classList.add("hidden");
+  section.classList.remove("hidden");
+  $("#thumbnail-reference-grid").innerHTML = usable.map(video => `<a href="${escapeAttr(video.url)}" target="_blank" rel="noopener noreferrer">
+    <img src="${escapeAttr(video.thumbnail)}" alt="${escapeAttr(video.title)} 썸네일" loading="lazy" />
+    <span>${escapeHtml(video.title)}</span>
+  </a>`).join("");
 }
 
 function youtubeCacheKey(query, region) {
@@ -237,6 +249,10 @@ function readYouTubeCache(query, region) {
     if (!raw) return null;
     const entry = JSON.parse(raw);
     if (!entry.savedAt || Date.now() - entry.savedAt > YOUTUBE_CACHE_TTL_MS) {
+      localStorage.removeItem(youtubeCacheKey(query, region));
+      return null;
+    }
+    if (!entry.data?.topVideos?.some(video => video.thumbnail)) {
       localStorage.removeItem(youtubeCacheKey(query, region));
       return null;
     }

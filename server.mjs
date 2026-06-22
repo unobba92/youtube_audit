@@ -65,10 +65,11 @@ const ANALYSIS_SCHEMA = {
         type: "object",
         properties: {
           text: { type: "string" },
-          score: { type: "integer", minimum: 0, maximum: 100 },
+          score: { type: "integer", minimum: 0, maximum: 100, description: "핵심 키워드 적합도, 구체성, 클릭 호기심, 과장 위험을 종합한 상대점수" },
           angle: { type: "string" },
+          reason: { type: "string", description: "해당 점수를 받은 이유를 짧은 한국어 한 문장으로 설명" },
         },
-        required: ["text", "score", "angle"],
+        required: ["text", "score", "angle", "reason"],
         additionalProperties: false,
       },
     },
@@ -208,6 +209,7 @@ export async function handleRequest(req, res) {
         if (analysis) aiProvider = `OpenAI ${OPENAI_MODEL}`;
       }
       if (!analysis) analysis = demoAnalysis(context, research);
+      analysis = normalizeAnalysisScores(analysis);
 
       const mode = aiProvider
         ? (research ? "AI + YouTube 실데이터" : "AI 분석")
@@ -263,6 +265,8 @@ async function analyzeWithGemini(context, research) {
           "제공된 YouTube 데이터가 없으면 검색량을 실제 수치처럼 단정하지 말고 추정치로 다룬다.",
           "제목은 과장 없이 자연스러운 한국어로 작성하고, 썸네일 문구는 가급적 2~6어절로 제한한다.",
           "태그보다 제목·썸네일·설명의 중요도가 높다는 원칙을 따른다.",
+          "키워드 기회점수는 수요 62%와 낮은 경쟁도 38%를 합산한 값으로 해석한다.",
+          "제목 점수는 키워드 적합도, 구체성, 클릭 호기심, 과장 위험으로 평가하고 이유를 짧게 쓴다.",
           context.duration === "숏폼"
             ? "숏폼으로 설계한다. 첫 1초 훅, 60초 이내 전개, 한 가지 메시지, 빠른 장면 전환에 맞춰 구성한다."
             : "롱폼으로 설계한다. 첫 15초 훅, 충분한 근거와 사례, 챕터별 전개와 시청 지속 장치를 포함한다.",
@@ -307,8 +311,10 @@ async function analyzeWithOpenAI(context, research) {
             "당신은 한국 유튜브 성장 전략가다.",
             "기획안의 시청자 약속, 클릭 동기, 시청 지속 가능성, 검색 의도를 냉정하게 평가한다.",
             "제공된 YouTube 데이터가 없으면 검색량을 실제 수치처럼 단정하지 말고 추정치로 다룬다.",
-          "제목은 과장 없이 자연스러운 한국어로 작성하고, 썸네일 문구는 가급적 2~6어절로 제한한다.",
-          "태그보다 제목·썸네일·설명의 중요도가 높다는 원칙을 따른다.",
+            "제목은 과장 없이 자연스러운 한국어로 작성하고, 썸네일 문구는 가급적 2~6어절로 제한한다.",
+            "태그보다 제목·썸네일·설명의 중요도가 높다는 원칙을 따른다.",
+            "키워드 기회점수는 수요 62%와 낮은 경쟁도 38%를 합산한 값으로 해석한다.",
+            "제목 점수는 키워드 적합도, 구체성, 클릭 호기심, 과장 위험으로 평가하고 이유를 짧게 쓴다.",
           context.duration === "숏폼"
             ? "숏폼으로 설계한다. 첫 1초 훅, 60초 이내 전개, 한 가지 메시지, 빠른 장면 전환에 맞춰 구성한다."
             : "롱폼으로 설계한다. 첫 15초 훅, 충분한 근거와 사례, 챕터별 전개와 시청 지속 장치를 포함한다.",
@@ -424,6 +430,7 @@ async function researchYouTube(context, topic) {
   const topVideos = videosData.items.map(item => ({
     videoId: item.id,
     url: `https://www.youtube.com/watch?v=${item.id}`,
+    thumbnail: item.snippet.thumbnails?.high?.url || item.snippet.thumbnails?.medium?.url || item.snippet.thumbnails?.default?.url || "",
     title: item.snippet.title,
     channel: item.snippet.channelTitle,
     publishedAt: item.snippet.publishedAt,
@@ -492,11 +499,11 @@ function demoAnalysis(context, research) {
     },
     keywords,
     titles: [
-      { text: `${primary}, 처음이라면 이것부터 보세요`, score: 91, angle: "초보자 길잡이" },
-      { text: `${primary} 직접 해보니 달랐던 5가지`, score: 88, angle: "경험·검증" },
-      { text: `${primary} 잘하는 사람은 ${secondary}부터 다릅니다`, score: 86, angle: "차이 발견" },
-      { text: `${primary} 실패하는 이유, 의외로 간단합니다`, score: 84, angle: "문제 해결" },
-      { text: `${primary} 완전정복: 준비부터 결과까지`, score: 80, angle: "종합 가이드" },
+      { text: `${primary}, 처음이라면 이것부터 보세요`, score: 91, angle: "초보자 길잡이", reason: "대상과 시작점이 명확해 검색 의도와 클릭 동기가 분명합니다." },
+      { text: `${primary} 직접 해보니 달랐던 5가지`, score: 88, angle: "경험·검증", reason: "직접 경험과 구체적인 숫자가 결과에 대한 궁금증을 만듭니다." },
+      { text: `${primary} 잘하는 사람은 ${secondary}부터 다릅니다`, score: 86, angle: "차이 발견", reason: "잘하는 사람의 차이를 알고 싶은 비교 심리를 활용합니다." },
+      { text: `${primary} 실패하는 이유, 의외로 간단합니다`, score: 84, angle: "문제 해결", reason: "실패 원인과 반전을 약속하지만 결과의 구체성은 조금 부족합니다." },
+      { text: `${primary} 완전정복: 준비부터 결과까지`, score: 80, angle: "종합 가이드", reason: "정보 범위는 분명하지만 호기심을 만드는 장치가 상대적으로 약합니다." },
     ],
     thumbnail: {
       headline: `${primary}, 이렇게`,
@@ -525,6 +532,22 @@ function demoAnalysis(context, research) {
       { level: "좋음", item: "확장성", detail: "초보·비교·실전 편으로 후속 콘텐츠를 만들 수 있습니다." },
     ],
   };
+}
+
+function normalizeAnalysisScores(analysis) {
+  if (Array.isArray(analysis?.keywords)) {
+    analysis.keywords = analysis.keywords.map(keyword => ({
+      ...keyword,
+      opportunity: clamp(Math.round(clamp(keyword.demand) * 0.62 + (100 - clamp(keyword.competition)) * 0.38)),
+    }));
+  }
+  if (Array.isArray(analysis?.titles)) {
+    analysis.titles = analysis.titles.map(title => ({
+      ...title,
+      reason: title.reason || `${title.angle || "제목 전략"} 관점에서 키워드 적합도와 클릭 호기심을 평가한 상대점수입니다.`,
+    }));
+  }
+  return analysis;
 }
 
 function extractKeywords(text, limit = 8) {
